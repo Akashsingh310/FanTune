@@ -6,6 +6,7 @@ import { Appbar } from './components/Appbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Users, Radio, Headphones } from 'lucide-react';
+import { Redirect } from './components/Redirect';
 
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -13,6 +14,7 @@ export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-950 text-gray-100">
       <Appbar />
+      <Redirect />
       <header className="px-4 lg:px-6 h-16 flex items-center border-b border-gray-800">
         <button
           onClick={() => setIsMenuOpen(!isMenuOpen)}
