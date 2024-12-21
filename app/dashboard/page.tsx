@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ThumbsUp, ThumbsDown, Play, Share2 } from 'lucide-react'
-import axios from 'axios'
+import { ThumbsUp, ThumbsDown, Play, Share2, Music } from 'lucide-react'
+import { signOut, useSession } from "next-auth/react"
+import { useRouter } from 'next/navigation'
+
 
 const REFRESH_INTERVAL_MS = 10 * 1000;
 
@@ -17,20 +19,31 @@ export default function SongVotingPlatform() {
     { id: '3', title: 'Song 3', votes: 1, thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg' },
   ])
   const [currentVideo, setCurrentVideo] = useState('dQw4w9WgXcQ')
+  const session = useSession()
+  const router = useRouter()
 
-  async function refreshstream()
-  {
-    const res = await fetch(`api/streams/my`,{
-      credentials:"include"
+  async function refreshStream() {
+    const res = await fetch(`api/streams/my`, {
+      credentials: "include"
     });
     // console.log(res);
   }
-  useEffect(()=>{
-    refreshstream()
-    const interval = setInterval(()=>{
 
-    },REFRESH_INTERVAL_MS)
-  },[])
+  useEffect(() => {
+    refreshStream()
+    const interval = setInterval(() => {
+
+    }, REFRESH_INTERVAL_MS)
+  }, [])
+
+  const handleLogout = async () => {
+    try {
+      await signOut({ redirect: false })
+      router.push('/') // Redirect to home page after logout
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +71,24 @@ export default function SongVotingPlatform() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-950 text-gray-100">
+      <header className="p-4 flex justify-between items-center bg-black">
+        <div className="flex items-center">
+          <Music className="h-6 w-6 mr-2 text-indigo-400" />
+          <span className="font-bold text-xl text-white">FanTune</span>
+        </div>
+        <div>
+          {session.data?.user ? (
+            <button 
+              className="p-2 px-4 rounded-md bg-indigo-500 text-white hover:bg-indigo-600"
+              onClick={handleLogout}>
+              Logout
+            </button>
+          ) : (
+            <span className="text-gray-400">Not logged in</span>
+          )}
+        </div>
+      </header>
+
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Song Voting Platform</h1>
         <Button 
