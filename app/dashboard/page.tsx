@@ -4,19 +4,32 @@ import { useEffect, useState } from 'react'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ThumbsUp, ThumbsDown, Play, Share2, Music } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, Play, Share2, Music, Video } from 'lucide-react'
 import { signOut, useSession } from "next-auth/react"
 import { useRouter } from 'next/navigation'
 
+interface item {
+    "id": string,
+    "type": string,
+    "url": string,
+    "extractedId": string,
+    "title": string,
+    "smallImg": string,
+    "bigImg": string,
+    "active": boolean,
+    "userId": string,
+    "votes": number,
+    "haveUpvoted":boolean;
+}
 
 const REFRESH_INTERVAL_MS = 10 * 1000;
 
 export default function SongVotingPlatform() {
   const [videoLink, setVideoLink] = useState('')
   const [queue, setQueue] = useState([
-    { id: '1', title: 'Song 1', votes: 5, thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg' },
-    { id: '2', title: 'Song 2', votes: 3, thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg' },
-    { id: '3', title: 'Song 3', votes: 1, thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg' },
+    { id: '1', title: 'Song 1', votes: 0, thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg',haveUpvoted:false },
+    { id: '2', title: 'Song 2', votes: 0, thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg',haveUpvoted:false },
+    { id: '3', title: 'Song 3', votes: 0, thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg',haveUpvoted:false },
   ])
   const [currentVideo, setCurrentVideo] = useState('dQw4w9WgXcQ')
   const session = useSession()
@@ -51,10 +64,23 @@ export default function SongVotingPlatform() {
     setVideoLink('');
   }
 
-  const handleVote = (id: string, increment: number) => {
+  const handleVote = (id: string, isUpvote: boolean) => {
     setQueue(queue.map(item => 
-      item.id === id ? { ...item, votes: item.votes + increment } : item
-    ).sort((a, b) => b.votes - a.votes))
+      item.id === id ? 
+      { 
+        ...item, 
+        votes: isUpvote ? item.votes + 1 : item.votes-1,
+        haveUpvoted: !item.haveUpvoted
+      } 
+      : item
+    ).sort((a, b) => (b.votes) - (a.votes)))
+
+    fetch(`api/streams/${isUpvote ? "upvote" : "downvote"}`,{
+      method:"POST",
+      body: JSON.stringify({
+        streamId:id
+      })
+    })
   }
 
   const handleShare = (id: string) => {
@@ -149,19 +175,11 @@ export default function SongVotingPlatform() {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          onClick={() => handleVote(item.id, 1)}
+                          onClick={() => handleVote(item.id, item.haveUpvoted ? false : true)}
                           className="text-green-400 hover:text-green-300 hover:bg-green-400/10"
                         >
-                          <ThumbsUp className="mr-1 h-4 w-4" />
+                          {item.haveUpvoted ? <ThumbsDown className="mr-1 h-4 w-4" />: <ThumbsUp className="mr-1 h-4 w-4" />}
                           {item.votes}
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleVote(item.id, -1)}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-400/10 ml-2"
-                        >
-                          <ThumbsDown className="mr-1 h-4 w-4" />
                         </Button>
                       </div>
                     </div>
