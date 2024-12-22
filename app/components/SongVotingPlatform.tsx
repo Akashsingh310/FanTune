@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ThumbsUp, ThumbsDown, Play, Share2, Music } from 'lucide-react'
+import { CircleChevronUp, CircleChevronDown, Play, Share2, Music, CircleChevronDownIcon } from 'lucide-react'
 import { signOut, useSession } from "next-auth/react"
 import { useRouter } from 'next/navigation'
 import LiteYouTubeEmbed from 'react-lite-youtube-embed';
@@ -49,7 +49,7 @@ export default function SongVotingPlatform({
       credentials: "include" 
     });
     const data = await res.json();
-    setQueue(data.streams);
+    setQueue(data.streams.sort((a:any,b:any)=>a.votes < b.votes ? 1 : -1));
   }
 
   useEffect(() => {
@@ -224,18 +224,18 @@ export default function SongVotingPlatform({
                     <h3 className="text-lg font-semibold text-white">{item.title}</h3>
                     <div className="flex items-center mt-1">
                       <Button 
-                        variant="ghost" 
+                        // variant="ghost" 
                         size="sm" 
-                        onClick={() => handleVote(item.id, !item.haveUpvoted)} // Toggle upvote state
-                        className={`${
-                          item.haveUpvoted 
-                            ? "text-red-500 hover:text-red-400 hover:bg-red-500/10" 
-                            : "text-green-400 hover:text-green-300 hover:bg-green-400/10"
-                        }`}
+                        onClick={() => handleVote(item.id, item.haveUpvoted ? false : true)} // Toggle upvote state
+                        // className={`${
+                        //   item.haveUpvoted 
+                        //     ? "text-red-500 hover:text-red-400 hover:bg-red-500/10" 
+                        //     : "text-green-400 hover:text-green-300 hover:bg-green-400/10"
+                        // }`}
                       >
                         {item.haveUpvoted 
-                          ? <ThumbsDown className="mr-1 h-4 w-4" /> 
-                          : <ThumbsUp className="mr-1 h-4 w-4" />}
+                          ? <CircleChevronDown className="mr-1 h-4 w-4" /> 
+                          : <CircleChevronUp className="mr-1 h-4 w-4" />}
                         {item.votes ?? 0} 
                       </Button>
                       </div>
