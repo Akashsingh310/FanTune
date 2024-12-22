@@ -35,9 +35,13 @@ export async function POST(req:NextRequest) {
         await prismaclient.upvote.create({
             data : {
                 userId:user.id,
-                streamId:data.streamId
+                streamId:data.streamId,
+                isUpvote: true
             }
         });
+        return NextResponse.json({
+          message: "Done"
+        })
     }
     catch(e)
     {

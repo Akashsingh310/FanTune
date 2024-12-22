@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 //@ts-ignore
 import youtubesearchapi from "youtube-search-api";
-var YT_REGEX = /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com\/(?:watch\?(?!.*\blist=)(?:.*&)?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[?&]\S+)?$/;
+import { YT_REGEX } from "@/app/lib/utils";
 
 
 const CreateStreamSchema = z.object({
@@ -49,12 +49,13 @@ export async function POST(req:NextRequest) {
         });
 
         return NextResponse.json({
-            message: "added stream",
-            id:stream.id
+           ...stream,
+           haveUpvoted : false,
+           votes:0
         })
     }catch(e)
     {
-        // console.log(e);
+        console.log(e);
         return NextResponse.json({
             message:"Error While reading a stream"
         },{
