@@ -9,51 +9,60 @@ const UpvoteSchema = z.object({
 })
 
 
-export async function POST(req:NextRequest) {
-    const session  = await getServerSession();
+export async function POST(req: NextRequest) {
+  const session = await getServerSession();
 
-    const user  = await prismaclient.user.findFirst({
-        where:{
-            email:session?.user?.email ?? ""
-        }
+  const user = await prismaclient.user.findFirst({
+    where: {
+      email: session?.user?.email ?? "",
+    },
+  });
+
+  if (!user) {
+    return NextResponse.json(
+      { message: "Unauthenticated" },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const data = UpvoteSchema.parse(await req.json());
+
+    // Check if the user has already upvoted
+    const existingVote = await prismaclient.upvote.findUnique({
+      where: {
+        userId_streamId: {
+          userId: user.id,
+          streamId: data.streamId,
+        },
+      },
     });
 
-    if(!user)
-    {
-        return NextResponse.json(
-            {
-              message: "Unauthenticated",
-            },
-            {
-              status: 403,
-            },
-          );
+    if (!existingVote) {
+      // Add an upvote
+      await prismaclient.upvote.create({
+        data: {
+          userId: user.id,
+          streamId: data.streamId,
+          isUpvote: true,
+        },
+      });
+
+      // Increment the votes count
+      await prismaclient.stream.update({
+        where: { id: data.streamId },
+        data: { votes: { increment: 1 } },
+      });
     }
 
-    try{
-        const data = UpvoteSchema.parse(await req.json());
-        await prismaclient.upvote.create({
-            data : {
-                userId:user.id,
-                streamId:data.streamId,
-                isUpvote: true
-            }
-        });
-        return NextResponse.json({
-          message: "Done"
-        })
-    }
-    catch(e)
-    {
-        return NextResponse.json(
-            {
-              message: "Error while Upvoting",
-            },
-            {
-              status: 403,
-            },
-          );
-    }
-
+    return NextResponse.json({ message: "Done" });
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json(
+      { message: "Error while upvoting" },
+      { status: 403 }
+    );
+  }
 }
+
 

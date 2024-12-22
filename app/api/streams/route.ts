@@ -4,6 +4,7 @@ import { z } from "zod";
 //@ts-ignore
 import youtubesearchapi from "youtube-search-api";
 import { YT_REGEX } from "@/app/lib/utils";
+import { getServerSession } from "next-auth";
 
 
 const CreateStreamSchema = z.object({
@@ -67,13 +68,57 @@ export async function POST(req:NextRequest) {
 
 export async function GET(req:NextRequest) {
     const creatorId = req.nextUrl.searchParams.get("creatorId");
-    const streams = await prismaclient.stream.findMany({
+    const session  = await getServerSession();
+
+    const user  = await prismaclient.user.findFirst({
         where:{
-            userId:creatorId ?? ""
+            email:session?.user?.email ?? ""
         }
-    })
+    });
+
+    if(!user)
+    {
+        return NextResponse.json(
+            {
+              message: "Unauthenticated",
+            },
+            {
+              status: 403,
+            },
+          );
+    }
+    if(!creatorId){
+        return NextResponse.json({
+            message:"Error"
+        },{
+            status: 411
+        })
+    }
+    const streams = await prismaclient.stream.findMany({
+        where: {
+            userId: creatorId,
+        },
+        include: {
+            _count: {
+                select: {
+                    upvotes: true,
+                },
+            },
+            upvotes:{
+                where:{
+                    userId:user.id,
+                }
+            }
+        },
+    });
+
+    const formattedStreams = streams.map(({ _count, ...rest }) => ({
+        ...rest,
+        upvotesCount: _count.upvotes, 
+        haveUpvoted: rest.upvotes.length ? true:false
+    }));
 
     return NextResponse.json({
-        streams
+        streams: formattedStreams,
     })
 }
