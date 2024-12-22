@@ -4,9 +4,16 @@ import { useEffect, useState } from 'react'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ThumbsUp, ThumbsDown, Play, Share2, Music, Video } from 'lucide-react'
+import { ThumbsUp, ThumbsDown, Play, Share2, Music } from 'lucide-react'
 import { signOut, useSession } from "next-auth/react"
 import { useRouter } from 'next/navigation'
+import LiteYouTubeEmbed from 'react-lite-youtube-embed';
+import 'react-lite-youtube-embed/dist/LiteYouTubeEmbed.css'
+import { YT_REGEX } from "@/app/lib/utils";
+import { randomUUID } from 'crypto'
+import { toast , ToastContainer} from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 
 interface item {
     "id": string,
@@ -19,19 +26,18 @@ interface item {
     "active": boolean,
     "userId": string,
     "votes": number,
-    "haveUpvoted":boolean;
+    "haveUpvoted": boolean;
 }
 
 const REFRESH_INTERVAL_MS = 10 * 1000;
 
+const creatorId = "60c6befc-c591-49a6-912a-23a984f54037"
+
 export default function SongVotingPlatform() {
   const [videoLink, setVideoLink] = useState('')
-  const [queue, setQueue] = useState([
-    { id: '1', title: 'Song 1', votes: 0, thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg',haveUpvoted:false },
-    { id: '2', title: 'Song 2', votes: 0, thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg',haveUpvoted:false },
-    { id: '3', title: 'Song 3', votes: 0, thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg',haveUpvoted:false },
-  ])
-  const [currentVideo, setCurrentVideo] = useState('dQw4w9WgXcQ')
+  const [queue, setQueue] = useState<item[]>([])
+  const [currentVideo, setCurrentVideo] = useState<item | null>(null)
+  const [loading,setLoading] = useState(false);
   const session = useSession()
   const router = useRouter()
 
@@ -39,13 +45,14 @@ export default function SongVotingPlatform() {
     const res = await fetch(`api/streams/my`, {
       credentials: "include"
     });
-    // console.log(res);
+    const data = await res.json();
+    setQueue(data.streams);
   }
 
   useEffect(() => {
     refreshStream()
     const interval = setInterval(() => {
-
+      refreshStream()
     }, REFRESH_INTERVAL_MS)
   }, [])
 
@@ -58,10 +65,26 @@ export default function SongVotingPlatform() {
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Submitted:', videoLink);
-    setVideoLink('');
+    setLoading(true)
+    try {
+      const res = await fetch("/api/streams", {
+        method: "POST",
+        body: JSON.stringify({
+          creatorId: creatorId,
+          url: videoLink
+        })
+      });
+      if (res.ok) {
+        setLoading(false)
+        setVideoLink('');
+      } else {
+        console.error("Failed to add stream");
+      }
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   const handleVote = (id: string, isUpvote: boolean) => {
@@ -83,17 +106,38 @@ export default function SongVotingPlatform() {
     })
   }
 
-  const handleShare = (id: string) => {
-    const shareableLink = `https://yoursongvotingplatform.com/song/${id}`;
-    navigator.clipboard.writeText(shareableLink);
-    alert('Link copied to clipboard!');
-  }
-
   const handleSharePlatform = () => {
-    const shareableLink = 'https://yoursongvotingplatform.com';
-    navigator.clipboard.writeText(shareableLink);
-    alert('Platform link copied to clipboard!');
-  }
+    const shareableLink = `${window.location.hostname}/creator/${creatorId}`;
+    
+    navigator.clipboard.writeText(shareableLink)
+      .then(() => {
+        toast.success('Platform link copied to clipboard!', {
+          position: "top-right",
+          autoClose: 3000,
+          style: {
+            backgroundColor: '#4CAF50', 
+            color: '#fff', 
+            borderRadius: '8px', 
+            fontWeight: 'bold', 
+            padding: '10px 20px', 
+          }
+        });
+      })
+      .catch((error) => {
+        toast.error('Failed to copy link to clipboard!', {
+          position: "top-right",
+          autoClose: 3000,
+          style: {
+            backgroundColor: '#f44336', 
+            color: '#fff', 
+            borderRadius: '8px',
+            fontWeight: 'bold',
+            padding: '10px 20px',
+          }
+        });
+        console.error("Clipboard error: ", error);
+      });
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-950 text-gray-100">
@@ -119,23 +163,26 @@ export default function SongVotingPlatform() {
         <h1 className="text-3xl font-bold mb-8">Song Voting Platform</h1>
         <Button 
           onClick={handleSharePlatform}
-          className="mb-8 bg-purple-600 hover:bg-purple-700 text-white"
-        >
+          className="mb-8 bg-purple-600 hover:bg-purple-700 text-white">
           <Share2 className="mr-2 h-4 w-4" />
           Share
         </Button>
+        <ToastContainer />
+
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
             <h2 className="text-2xl font-semibold mb-4">Current Song</h2>
             <div className="aspect-video mb-4">
-              <iframe 
-                width="100%" 
-                height="100%" 
-                src={`https://www.youtube.com/embed/${currentVideo}`}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowFullScreen
-              ></iframe>
+              {currentVideo && (
+                <iframe 
+                  width="100%" 
+                  height="100%" 
+                  src={`https://www.youtube.com/embed/${currentVideo.extractedId}`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                  allowFullScreen
+                ></iframe>
+              )}
             </div>
 
             <h2 className="text-2xl font-semibold mb-4">Add a Song</h2>
@@ -147,19 +194,21 @@ export default function SongVotingPlatform() {
                 onChange={(e) => setVideoLink(e.target.value)}
                 className="flex-grow bg-gray-800 text-white border-gray-700"
               />
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Add to Queue</Button>
+              <Button disabled = {loading}
+                type="submit" 
+                className="bg-blue-600 hover:bg-blue-700"
+              >{loading ? "loading..." : "Add to Queue"}</Button>
             </form>
 
-            {videoLink && (
+            {videoLink && videoLink.match(YT_REGEX) && !loading &&(
               <div className="mb-4">
                 <h3 className="text-xl font-semibold mb-2">Preview:</h3>
-                <img 
-                  src={`https://img.youtube.com/vi/${videoLink.split('v=')[1]}/0.jpg`} 
-                  alt="Video thumbnail" 
-                  className="w-full rounded-lg"
-                />
-              </div>
-            )}
+                  <LiteYouTubeEmbed
+                    title="Video Preview"
+                    id={videoLink.split("?v=")[1]}
+                  />
+                </div>
+              )}
           </div>
 
           <div>
@@ -168,36 +217,34 @@ export default function SongVotingPlatform() {
               {queue.map((item) => (
                 <Card key={item.id} className="bg-gray-800 border-gray-700">
                   <CardContent className="flex items-center p-4">
-                    <img src={item.thumbnail} alt={item.title} className="w-20 h-20 object-cover rounded mr-4" />
+                    <img src={item.smallImg} alt={item.title} className="w-20 h-20 object-cover rounded mr-4" />
                     <div className="flex-grow">
-                      <h3 className="text-lg font-semibold">{item.title}</h3>
-                      <div className="flex items-center mt-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleVote(item.id, item.haveUpvoted ? false : true)}
-                          className="text-green-400 hover:text-green-300 hover:bg-green-400/10"
-                        >
-                          {item.haveUpvoted ? <ThumbsDown className="mr-1 h-4 w-4" />: <ThumbsUp className="mr-1 h-4 w-4" />}
-                          {item.votes}
-                        </Button>
+                    <h3 className="text-lg font-semibold text-white">{item.title}</h3>
+                    <div className="flex items-center mt-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleVote(item.id, !item.haveUpvoted)} // Toggle upvote state
+                        className={`${
+                          item.haveUpvoted 
+                            ? "text-red-500 hover:text-red-400 hover:bg-red-500/10" 
+                            : "text-green-400 hover:text-green-300 hover:bg-green-400/10"
+                        }`}
+                      >
+                        {item.haveUpvoted 
+                          ? <ThumbsDown className="mr-1 h-4 w-4" /> 
+                          : <ThumbsUp className="mr-1 h-4 w-4" />}
+                        {item.votes ?? 0} 
+                      </Button>
                       </div>
                     </div>
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      onClick={() => setCurrentVideo(item.id)}
+                      onClick={() => setCurrentVideo(item)}
                       className="text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
                     >
                       <Play className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => handleShare(item.id)}
-                      className="text-purple-400 hover:text-purple-300 hover:bg-purple-400/10 ml-2"
-                    >
-                      <Share2 className="h-4 w-4" />
                     </Button>
                   </CardContent>
                 </Card>
