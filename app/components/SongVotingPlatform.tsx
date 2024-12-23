@@ -1,19 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { CircleChevronUp, CircleChevronDown, Play, Share2, Music, CircleChevronDownIcon } from 'lucide-react'
-import { signOut, useSession } from "next-auth/react"
+import { signIn, signOut, useSession } from "next-auth/react"
 import { useRouter } from 'next/navigation'
 import LiteYouTubeEmbed from 'react-lite-youtube-embed';
 import 'react-lite-youtube-embed/dist/LiteYouTubeEmbed.css'
 import { YT_REGEX } from "@/app/lib/utils";
 import { toast , ToastContainer} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { json } from 'stream/consumers'
-
+//@ts-ignore
+import YouTubePlayer from 'youtube-player';
 
 interface item {
     "id": string,
@@ -46,15 +46,16 @@ export default function SongVotingPlatform({
   const [playNextLoader, setplayNextLoader] = useState(false)
   const session = useSession()
   const router = useRouter()
+  const videoPlayerRef = useRef<HTMLDivElement | null>(null);
 
   async function refreshStream() {
     const res = await fetch(`/api/streams/?creatorId=${creatorId}`, { 
       credentials: "include" 
     });
     const data = await res.json();
-    setQueue(data.streams.sort((a:any,b:any)=>a.votes < b.votes ? 1 : -1));
+    setQueue(data?.streams?.sort((a: any, b: any) => b.votes - a.votes) || []);
     setCurrentVideo(item => {
-      if(item?.id === data.activeStream.stream.id)
+      if(item?.id === data.activeStream?.stream?.id)
       {
         return item
       }
@@ -77,6 +78,28 @@ export default function SongVotingPlatform({
       console.error('Logout error:', error)
     }
   }
+
+  useEffect(()=>{
+    if(!videoPlayerRef.current){
+      return;
+    }
+    let player = YouTubePlayer(videoPlayerRef.current);
+    player.loadVideoById(currentVideo?.extractedId);
+    player.playVideo();
+    function evenHandler(event:any)
+    {
+      // console.log(event);
+      // console.log(event.data);
+      if(event.data === 0){
+          handlePlayNext();
+        }
+    };
+    player.on('stateChange',evenHandler);
+    return ()=>{
+      player.destroy();
+    }
+  },[currentVideo,videoPlayerRef])
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,7 +213,11 @@ export default function SongVotingPlatform({
               Logout
             </button>
           ) : (
-            <span className="text-gray-400">Not logged in</span>
+            <button 
+              className="p-2 px-4 rounded-md bg-indigo-500 text-white hover:bg-indigo-600"
+              onClick={() => signIn()}>
+              Sign In
+            </button>
           )}
         </div>
       </header>
@@ -210,27 +237,55 @@ export default function SongVotingPlatform({
           <div>
             <h2 className="text-2xl font-semibold mb-4">Current Song</h2>
             <div className="aspect-video mb-4">
-              {currentVideo && playVideo &&(
-                <iframe 
-                  width="100%" 
-                  height="100%" 
-                  src={`https://www.youtube.com/embed/${currentVideo.extractedId}?autoplay=1`}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                  allowFullScreen
-                ></iframe>
-              )}
+              {/* {currentVideo && playVideo &&(
+                <div ref={videoPlayerRef} className='w-full'/>
+                
+                // <iframe 
+                //   width="100%" 
+                //   height="100%" 
+                //   src={`https://www.youtube.com/embed/${currentVideo.extractedId}?autoplay=1`}
+                //   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                //   allowFullScreen
+                // ></iframe>
+              )} */}
+              {currentVideo ? (
+                    <div>
+                      {playVideo ? (
+                        <>
+                          <div ref={videoPlayerRef} className="w-full" />
+                        </>
+                      ) : (
+                        <>
+                          <img
+                            height={300}
+                            width={300}
+                            alt={currentVideo.bigImg}
+                            src={currentVideo.bigImg}
+                            className="h-84 w-full rounded object-cover"
+                          />
+                          <p className="mt-2 text-center font-semibold">
+                            {currentVideo.title}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="py-8 text-center">No video playing</p>
+                  )}
             </div>
 
 
             {playVideo && <Button disabled={playNextLoader}
               onClick={handlePlayNext}
-              className="mb-4 bg-green-600 hover:bg-green-700 text-white"
+              className="p-2 px-4 rounded-md bg-indigo-500 text-white hover:bg-indigo-600"
             >
               {playNextLoader ? "Loading..." : "Play Next"}
             </Button>}
 
+            <div className="mt-4">
             <h2 className="text-2xl font-semibold mb-4">Add a Song</h2>
-            <form onSubmit={handleSubmit} className="flex gap-2 mb-8">
+            </div>
+            <form onSubmit={handleSubmit} className="flex gap-3 mb-8">
               <Input
                 type="text"
                 placeholder="Paste YouTube link here"
