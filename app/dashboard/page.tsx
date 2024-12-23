@@ -32,8 +32,8 @@ interface item {
 
 const REFRESH_INTERVAL_MS = 10 * 1000;
 
-const creatorId = "60c6befc-c591-49a6-912a-23a984f54037"
+const creatorId = "ef0ea9db-00f9-42cf-a1a7-2401b5b8a5a9"
 
 export default function Components() {
-  return <SongVotingPlatform creatorId = {creatorId}/>
+  return <SongVotingPlatform creatorId = {creatorId} playVideo = {true} />
 }

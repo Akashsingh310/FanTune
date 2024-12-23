@@ -32,10 +32,20 @@ model Stream {
   smallImg      String         @default("")
   bigImg        String         @default("")
   active        Boolean        @default(true)
+  played        Boolean        @default(false)
+  playedTs      DateTime?
+  createAt      DateTime       @default(now())
   upvotes       Upvote[]
   votes         Int            @default(0)
   userId        String
   user          User           @relation(fields: [userId], references: [id], name: "user")
+  currentStream CurrentStream?
+}
+
+model CurrentStream {
+  userId   String  @id
+  streamId String? @unique
+  stream   Stream? @relation(fields: [streamId], references: [id])
 }
 
 model Upvote {

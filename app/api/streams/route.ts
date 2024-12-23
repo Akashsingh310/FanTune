@@ -94,9 +94,10 @@ export async function GET(req:NextRequest) {
             status: 411
         })
     }
-    const streams = await prismaclient.stream.findMany({
+    const [streams,activeStream] = await Promise.all([await prismaclient.stream.findMany({
         where: {
             userId: creatorId,
+            played: false
         },
         include: {
             _count: {
@@ -110,7 +111,14 @@ export async function GET(req:NextRequest) {
                 }
             }
         },
-    });
+    }),await prismaclient.currentStream.findFirst({
+        where: {
+            userId: creatorId,
+        },
+        include: {
+            stream:true
+        }
+    })]);
 
     const formattedStreams = streams.map(({ _count, ...rest }) => ({
         ...rest,
@@ -120,5 +128,6 @@ export async function GET(req:NextRequest) {
 
     return NextResponse.json({
         streams: formattedStreams,
+        activeStream
     })
 }

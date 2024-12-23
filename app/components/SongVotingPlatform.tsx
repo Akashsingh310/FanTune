@@ -10,9 +10,9 @@ import { useRouter } from 'next/navigation'
 import LiteYouTubeEmbed from 'react-lite-youtube-embed';
 import 'react-lite-youtube-embed/dist/LiteYouTubeEmbed.css'
 import { YT_REGEX } from "@/app/lib/utils";
-import { randomUUID } from 'crypto'
 import { toast , ToastContainer} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { json } from 'stream/consumers'
 
 
 interface item {
@@ -33,14 +33,17 @@ const REFRESH_INTERVAL_MS = 10 * 1000;
 
 
 export default function SongVotingPlatform({
-  creatorId
+  creatorId,
+  playVideo = false
 }:{
-  creatorId: string
+  creatorId: string;
+  playVideo: boolean;
 }) {
   const [videoLink, setVideoLink] = useState('')
   const [queue, setQueue] = useState<item[]>([])
   const [currentVideo, setCurrentVideo] = useState<item | null>(null)
   const [loading,setLoading] = useState(false);
+  const [playNextLoader, setplayNextLoader] = useState(false)
   const session = useSession()
   const router = useRouter()
 
@@ -50,6 +53,13 @@ export default function SongVotingPlatform({
     });
     const data = await res.json();
     setQueue(data.streams.sort((a:any,b:any)=>a.votes < b.votes ? 1 : -1));
+    setCurrentVideo(item => {
+      if(item?.id === data.activeStream.stream.id)
+      {
+        return item
+      }
+      return data.activeStream.stream
+    });
   }
 
   useEffect(() => {
@@ -141,6 +151,30 @@ export default function SongVotingPlatform({
       });
   };
 
+  const handlePlayNext = async () => {
+    if (queue.length === 0) {
+      toast.info('No upcoming songs in the queue!', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    try{
+        setplayNextLoader(true)
+        const data = await fetch('/api/streams/next',{
+        method:"GET"
+      })
+      const json =  await data.json();
+      setCurrentVideo(json.stream);
+      setQueue(q=>q.filter(x=>x.id !== json.stream.id))
+    } 
+    catch(e){
+
+    }
+    setplayNextLoader(false)
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-950 text-gray-100">
       <header className="p-4 flex justify-between items-center bg-black">
@@ -176,16 +210,24 @@ export default function SongVotingPlatform({
           <div>
             <h2 className="text-2xl font-semibold mb-4">Current Song</h2>
             <div className="aspect-video mb-4">
-              {currentVideo && (
+              {currentVideo && playVideo &&(
                 <iframe 
                   width="100%" 
                   height="100%" 
-                  src={`https://www.youtube.com/embed/${currentVideo.extractedId}`}
+                  src={`https://www.youtube.com/embed/${currentVideo.extractedId}?autoplay=1`}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                   allowFullScreen
                 ></iframe>
               )}
             </div>
+
+
+            {playVideo && <Button disabled={playNextLoader}
+              onClick={handlePlayNext}
+              className="mb-4 bg-green-600 hover:bg-green-700 text-white"
+            >
+              {playNextLoader ? "Loading..." : "Play Next"}
+            </Button>}
 
             <h2 className="text-2xl font-semibold mb-4">Add a Song</h2>
             <form onSubmit={handleSubmit} className="flex gap-2 mb-8">

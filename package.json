@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@prisma/client": "^6.0.1",
+    "@prisma/client": "^6.1.0",
     "@radix-ui/react-slot": "^1.1.1",
     "axios": "^1.7.9",
     "class-variance-authority": "^0.7.1",
@@ -17,7 +17,7 @@
     "lucide-react": "^0.468.0",
     "next": "^15.0.3",
     "next-auth": "^4.24.10",
-    "prisma": "^6.0.1",
+    "prisma": "^6.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-lite-youtube-embed": "^2.4.0",
