@@ -8,7 +8,7 @@ export default async function Page({
     const { creatorId } = await params; 
     return (
         <div>
-            <SongVotingPlatform creatorId={creatorId} />
+            <SongVotingPlatform creatorId={creatorId} playVideo ={false} />
         </div>
     );
 }
