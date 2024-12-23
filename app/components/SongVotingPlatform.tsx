@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { CircleChevronUp, CircleChevronDown, Play, Share2, Music, CircleChevronDownIcon } from 'lucide-react'
+import { CircleChevronUp, CircleChevronDown, Play, Share2, Music } from 'lucide-react'
 import { signIn, signOut, useSession } from "next-auth/react"
 import { useRouter } from 'next/navigation'
 import LiteYouTubeEmbed from 'react-lite-youtube-embed';
@@ -12,8 +12,8 @@ import 'react-lite-youtube-embed/dist/LiteYouTubeEmbed.css'
 import { YT_REGEX } from "@/app/lib/utils";
 import { toast , ToastContainer} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-//@ts-ignore
-import YouTubePlayer from 'youtube-player';
+// @ts-expect-error: No TypeScript type definition for youtube-player module
+import YouTubePlayer, { YouTubePlayerEvent }  from 'youtube-player';
 
 interface item {
     "id": string,
@@ -48,12 +48,13 @@ export default function SongVotingPlatform({
   const router = useRouter()
   const videoPlayerRef = useRef<HTMLDivElement | null>(null);
 
+
   async function refreshStream() {
     const res = await fetch(`/api/streams/?creatorId=${creatorId}`, { 
       credentials: "include" 
     });
     const data = await res.json();
-    setQueue(data?.streams?.sort((a: any, b: any) => b.votes - a.votes) || []);
+    setQueue(data?.streams?.sort((a: item, b: item) => b.votes - a.votes) || []);
     setCurrentVideo(item => {
       if(item?.id === data.activeStream?.stream?.id)
       {
@@ -68,7 +69,8 @@ export default function SongVotingPlatform({
     const interval = setInterval(() => {
       refreshStream()
     }, REFRESH_INTERVAL_MS)
-  }, [])
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -83,10 +85,10 @@ export default function SongVotingPlatform({
     if(!videoPlayerRef.current){
       return;
     }
-    let player = YouTubePlayer(videoPlayerRef.current);
+    const player = YouTubePlayer(videoPlayerRef.current);
     player.loadVideoById(currentVideo?.extractedId);
     player.playVideo();
-    function evenHandler(event:any)
+    function evenHandler(event:YouTubePlayerEvent)
     {
       // console.log(event);
       // console.log(event.data);
@@ -193,7 +195,7 @@ export default function SongVotingPlatform({
       setQueue(q=>q.filter(x=>x.id !== json.stream.id))
     } 
     catch(e){
-
+      console.log(e)
     }
     setplayNextLoader(false)
   };
