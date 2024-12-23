@@ -5,9 +5,9 @@ import { prismaclient } from '../lib/db';
 import SongVotingPlatform from '../components/SongVotingPlatform';
 import { getServerSession } from 'next-auth/next';
 
-type Props = {
-  creatorId: string | null;
-};
+// type Props = {
+//   creatorId: string | null;
+// };
 
 export default async function DashboardPage() {
   const session = await getServerSession();
