@@ -1,13 +1,38 @@
-'use client'
 
 
-import 'react-lite-youtube-embed/dist/LiteYouTubeEmbed.css'
-import SongVotingPlatform from '../components/SongVotingPlatform'
+// app/dashboard/page.tsx
+import { prismaclient } from '../lib/db';
+import SongVotingPlatform from '../components/SongVotingPlatform';
+import { getServerSession } from 'next-auth/next';
 
+type Props = {
+  creatorId: string | null;
+};
 
+export default async function DashboardPage() {
+  const session = await getServerSession();
 
-const creatorId = "962b4598-2104-46da-a03a-be91247a37a5"
+  if (!session?.user?.email) {
+    return <div>No session found.</div>; 
+  }
 
-export default function Components() {
-  return <SongVotingPlatform creatorId = {creatorId} playVideo = {true} />
+  const user = await prismaclient.user.findFirst({
+    where: {
+      email: session.user.email,
+    },
+  });
+
+  if (!user) {
+    return <div>No user found.</div>; // Handle case where user is not found
+  }
+
+  return <ClientComponent creatorId={user.id} />;
+}
+
+function ClientComponent({ creatorId }: { creatorId: string }) {
+  return (
+    <div>
+      <SongVotingPlatform creatorId={creatorId} playVideo={true} />
+    </div>
+  );
 }
